@@ -318,7 +318,7 @@ class Game {
         document.addEventListener('keydown', e => {
             this.keys[e.key] = true;
             if(e.key === 'Enter' && this.state === 'menu') this.startGame();
-            if(e.key === 'Enter' && (this.state === 'gameover'||this.state==='victory'||this.state==='over')) this.reset(); this.state='menu'; this.elStatus.textContent='按 ENTER 开始游戏'; this.elStatus.className='menu';
+            if(e.key === 'Enter' && (this.state === 'gameover'||this.state==='over'||this.state==='victory')) this.startGame();
             if(e.key === 'p' || e.key === 'P') this.togglePause();
             if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
         });
@@ -358,6 +358,18 @@ class Game {
         this.player.cooldown = 0;
         this.player.cooldownMax = 15;
         this.player.hp = 1;
+        // Clear spawn areas so tanks don't spawn inside walls
+        const clearArea = (x, y) => {
+            const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
+            for(let dr=0; dr<2; dr++) for(let dc=0; dc<2; dc++) {
+                const rr=r+dr, cc=c+dc;
+                if(rr>=0 && rr<ROWS && cc>=0 && cc<COLS && this.map[rr][cc]!==T.BASE) this.map[rr][cc]=T.EMPTY;
+            }
+        };
+        clearArea(this.playerSpawnX, this.playerSpawnY);
+        clearArea(2*TILE, TILE);
+        clearArea(COLS/2*TILE - HALF_TANK, TILE);
+        clearArea((COLS-4)*TILE, TILE);
         this.updateUI();
         this.spawnEnemiesIndicators();
     }
@@ -796,6 +808,7 @@ class Game {
     }
 
     renderMap(ctx) {
+        if(!this.map) return;
         for(let r=0; r<ROWS; r++) {
             for(let c=0; c<COLS; c++) {
                 const tile = this.map[r][c];
@@ -968,13 +981,56 @@ class Game {
     }
 
     renderOverlay(ctx) {
-        if(this.state === 'paused') {
+        if(this.state === 'menu') {
+            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+            ctx.fillRect(0, 0, W, H);
+            // Title
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 52px "Segoe UI",Arial,sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 20;
+            ctx.fillText('坦 克 大 战', W/2, H*0.32);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#e8e8e8';
+            ctx.font = '18px Arial';
+            ctx.fillText('BATTLE CITY', W/2, H*0.32 + 45);
+            // Tank icon
+            ctx.save();
+            ctx.translate(W/2, H*0.48);
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(-24, -20, 48, 40);
+            ctx.fillStyle = '#e67e22';
+            ctx.fillRect(-8, -28, 16, 28);
+            ctx.fillStyle = '#8a6e00';
+            ctx.fillRect(-28, -24, 6, 48);
+            ctx.fillRect(22, -24, 6, 48);
+            ctx.restore();
+            // Instructions
+            ctx.fillStyle = '#aaa';
+            ctx.font = '18px Arial';
+            const blink = Math.sin(Date.now() * 0.004) > 0;
+            if(blink) {
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 22px Arial';
+                ctx.fillText('按 ENTER 开始游戏', W/2, H*0.65);
+            }
+            ctx.fillStyle = '#888';
+            ctx.font = '14px Arial';
+            ctx.fillText('↑ ↓ ← → / WASD 移动', W/2, H*0.76);
+            ctx.fillText('Space 射击  |  P 暂停', W/2, H*0.80);
+        } else if(this.state === 'paused') {
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.fillRect(0, 0, W, H);
             ctx.fillStyle = '#fff';
             ctx.font = '48px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('暂停', W/2, H/2);
+            ctx.textBaseline = 'middle';
+            ctx.fillText('暂  停', W/2, H/2);
+            ctx.fillStyle = '#aaa';
+            ctx.font = '16px Arial';
+            ctx.fillText('按 P 继续', W/2, H/2 + 40);
         }
     }
 
